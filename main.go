@@ -36,16 +36,16 @@ type CqHttp struct {
 }
 
 type OpenAI struct {
-	ChatAIUrl            string         `yaml:"chatAIUrl" comment:"调用API的URL"`
-	APIKey               string         `yaml:"APIKey"`
-	Model                string         `yaml:"model"`
-	ResponseMaxTokens    int            `yaml:"responseMaxTokens" comment:"AI回复内容的最大token数量"`
-	GroupChatMaxTokens   int            `yaml:"groupChatMaxTokens" comment:"群聊模式下全部prompts的最大token数量"`
-	PrivateChatMaxTokens int            `yaml:"privateChatMaxTokens" comment:"非群聊模式下全部prompts的最大token数量"`
-	EnableGroupChat      map[int64]bool `yaml:"-"`
-	DefaultTemperature   float64        `yaml:"defaultTemperature"`
-	InitialPrompts       string         `yaml:"initialPrompts" comment:"初始化AI设定的prompts"`
-	MinInterval          float64        `yaml:"minInterval" comment:"最短API调用间隔"`
+	ChatAIUrl            string          `yaml:"chatAIUrl" comment:"调用API的URL"`
+	APIKey               string          `yaml:"APIKey"`
+	Model                string          `yaml:"model"`
+	ResponseMaxTokens    int             `yaml:"responseMaxTokens" comment:"AI回复内容的最大token数量"`
+	GroupChatMaxTokens   int             `yaml:"groupChatMaxTokens" comment:"群聊模式下全部prompts的最大token数量"`
+	PrivateChatMaxTokens int             `yaml:"privateChatMaxTokens" comment:"非群聊模式下全部prompts的最大token数量"`
+	EnableGroupChat      map[string]bool `yaml:"-"`
+	DefaultTemperature   float64         `yaml:"defaultTemperature"`
+	InitialPrompts       string          `yaml:"initialPrompts" comment:"初始化AI设定的prompts"`
+	MinInterval          float64         `yaml:"minInterval" comment:"最短API调用间隔"`
 }
 
 type RedisConfig struct {
@@ -61,7 +61,7 @@ type GreetingConfig struct {
 
 type Config struct {
 	Port     string         `yaml:"port" comment:"监听端口，也即为cqhttp的上报端口"`
-	AdminIds []int64        `yaml:"adminIds" comment:"管理员ID，目前仅支持QQ号"`
+	AdminIds []string       `yaml:"adminIds" comment:"管理员ID，目前仅支持QQ号"`
 	CqHttp   CqHttp         `yaml:"cqHttp"`
 	OpenAI   OpenAI         `yaml:"openAI"`
 	Redis    RedisConfig    `yaml:"redisConfig"`
@@ -153,7 +153,7 @@ func initHTTPClients() {
 func initGlobalConfig() error {
 	globalConfig = &Config{
 		Port:     "5701",
-		AdminIds: []int64{123456},
+		AdminIds: []string{"123456"},
 		CqHttp: CqHttp{
 			AccessToken:      "",
 			ServerUrl:        "http://0.0.0.0:5700/",
@@ -191,7 +191,7 @@ func initGlobalConfig() error {
 		if err != nil {
 			return err
 		}
-		globalConfig.OpenAI.EnableGroupChat = make(map[int64]bool)
+		globalConfig.OpenAI.EnableGroupChat = make(map[string]bool)
 	} else {
 		// Save default config to YAML file if it does not exist
 		yamlData, err := yaml.Marshal(globalConfig)

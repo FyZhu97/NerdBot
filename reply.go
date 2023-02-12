@@ -16,12 +16,12 @@ type QQMessage struct {
 	Message       []Message `json:"message"`
 	RawMessage    string    `json:"raw_message"`
 	//Sender        int64     `json:"sender"`
-	SelfId      int64           `json:"self_id"`
+	SelfId      string          `json:"self_id"`
 	Time        int64           `json:"time"`
 	Status      AppStatus       `json:"status"`
-	UserId      int64           `json:"user_id"`
-	TargetId    int64           `json:"target_id"`
-	GroupId     int64           `json:"group_id"`
+	UserId      string          `json:"user_id"`
+	TargetId    string          `json:"target_id"`
+	GroupId     string          `json:"group_id"`
 	MessageType string          `json:"message_type"`
 	SubType     string          `json:"sub_type"`
 	Font        int64           `json:"font"`
@@ -142,7 +142,7 @@ func (req QQMessage) ExecuteCommand() Message {
 	}
 
 	enableGroupChat, ok := globalConfig.OpenAI.EnableGroupChat[req.GroupId]
-	var id int64
+	var id string
 	oriRec := OriRecord
 	if req.MessageType == "group" && enableGroupChat {
 		id = req.GroupId
@@ -150,7 +150,6 @@ func (req QQMessage) ExecuteCommand() Message {
 	} else {
 		id = req.UserId
 	}
-	idStr := strconv.FormatInt(id, 10)
 
 	remainText := strings.Replace(req.RawMessage, "DabianBot ", "", -1)
 	remainText = strings.Trim(remainText, " ")
@@ -169,12 +168,12 @@ func (req QQMessage) ExecuteCommand() Message {
 		if remainText == "group mode" {
 			if !ok || !enableGroupChat {
 				globalConfig.OpenAI.EnableGroupChat[req.GroupId] = true
-				msg.Data["text"] = "[通知]\n群" + strconv.FormatInt(req.GroupId, 10) + "的群聊模式已开启，之后所有群聊文字信息" +
+				msg.Data["text"] = "[通知]\n群" + req.GroupId + "的群聊模式已开启，之后所有群聊文字信息" +
 					"将以同一session供机器人进行分析。如需机器人进行回复，请在输入信息中@戴便机器人。\n注意: 此功能为实验性功能。另，群聊模式可能使用大量token，" +
 					"请注意您的token使用量。"
 
 			} else {
-				msg.Data["text"] = "[错误]\n群" + strconv.FormatInt(req.GroupId, 10) + "的群聊模式已开启，无须重复操作。"
+				msg.Data["text"] = "[错误]\n群" + req.GroupId + "的群聊模式已开启，无须重复操作。"
 			}
 			return msg
 		} else if remainText == "private mode" {
@@ -189,7 +188,7 @@ func (req QQMessage) ExecuteCommand() Message {
 	}
 
 	if remainText == "clear" {
-		err := StoreRecord(idStr, &oriRec)
+		err := StoreRecord(id, &oriRec)
 		if err != nil {
 			msg.Data["text"] = fmt.Sprintf("[错误]ID: %d 的上下文清除失败。", id)
 		} else {
@@ -209,7 +208,7 @@ func (req QQMessage) ExecuteCommand() Message {
 			msg.Data["text"] = "[错误]无效的temperature设置，值应该为0~1之间的小数"
 			return msg
 		}
-		record, ok, err := RetrieveRecord(idStr)
+		record, ok, err := RetrieveRecord(id)
 		if err != nil {
 			msg.Data["text"] = fmt.Sprintf("[错误]temperature参数设置失败:获取记录失败")
 		} else {
@@ -217,7 +216,7 @@ func (req QQMessage) ExecuteCommand() Message {
 				record = &oriRec
 			}
 			record.Temperature = temp
-			err = StoreRecord(idStr, record)
+			err = StoreRecord(id, record)
 			if err != nil {
 				msg.Data["text"] = fmt.Sprintf("[错误]temperature参数设置失败：存储记录失败")
 			} else {

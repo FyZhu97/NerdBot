@@ -12,8 +12,8 @@ import (
 
 type SendMsgData struct {
 	MessageType string    `json:"message_type"`
-	UserId      int64     `json:"user_id"`
-	GroupId     int64     `json:"group_id"`
+	UserId      string    `json:"user_id"`
+	GroupId     string    `json:"group_id"`
 	Message     []Message `json:"message"`
 	AutoEscape  bool      `json:"auto_escape"`
 	ReceivedMsg string    `json:"-"`
@@ -40,7 +40,7 @@ func (data SendMsgData) Send() error {
 		return err
 	}
 	if resp.StatusCode != 200 {
-		return errors.New("[Sender] reply to " + data.MessageType + " " + strconv.FormatInt(data.UserId, 10) + " error: " + strconv.FormatInt(int64(resp.StatusCode), 10))
+		return errors.New("[Sender] reply to " + data.MessageType + " " + data.UserId + " error: " + strconv.FormatInt(int64(resp.StatusCode), 10))
 	}
 	logrus.Info("[Sender]Send message success: ", data.Message)
 	return nil
