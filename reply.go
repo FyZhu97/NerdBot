@@ -10,11 +10,11 @@ import (
 )
 
 type QQMessage struct {
-	Interval      int64  `json:"interval"`
-	MetaEventType string `json:"meta_event_type"`
-	PostType      string `json:"post_type"`
-	Message       string `json:"message"`
-	RawMessage    string `json:"raw_message"`
+	Interval      int64     `json:"interval"`
+	MetaEventType string    `json:"meta_event_type"`
+	PostType      string    `json:"post_type"`
+	Message       []Message `json:"message"`
+	RawMessage    string    `json:"raw_message"`
 	//Sender        int64     `json:"sender"`
 	SelfId      int64           `json:"self_id"`
 	Time        int64           `json:"time"`
@@ -68,16 +68,16 @@ func reply(ctx *gin.Context) {
 		HeartbeatContinue()
 		return
 	}
-	logrus.Info("Received message: " + req.Message)
+	logrus.Info("Received message: ", req.Message)
 	sender := SendMsgData{
 		MessageType: req.MessageType,
 		UserId:      req.UserId,
 		GroupId:     req.GroupId,
 		Message:     make([]Message, 0, 5),
 		AutoEscape:  false,
-		ReceivedMsg: req.Message,
+		ReceivedMsg: req.RawMessage,
 	}
-	if strings.HasPrefix(req.Message, "NerdBot ") {
+	if strings.HasPrefix(req.RawMessage, "NerdBot ") {
 		msg := req.ExecuteCommand()
 		sender.Message = append(sender.Message, msg)
 		err = sender.Send()
@@ -86,7 +86,7 @@ func reply(ctx *gin.Context) {
 		}
 		return
 	}
-	cqMessage, remainText, types := ParseCQCode(req.Message)
+	cqMessage, remainText, types := ParseCQCode(req.RawMessage)
 	req.CqTypes = types
 	remainText = strings.Trim(remainText, " ")
 	enableGroupChat, ok := globalConfig.OpenAI.EnableGroupChat[req.GroupId]
@@ -152,7 +152,7 @@ func (req QQMessage) ExecuteCommand() Message {
 	}
 	idStr := strconv.FormatInt(id, 10)
 
-	remainText := strings.Replace(req.Message, "DabianBot ", "", -1)
+	remainText := strings.Replace(req.RawMessage, "DabianBot ", "", -1)
 	remainText = strings.Trim(remainText, " ")
 	for _, id := range globalConfig.AdminIds {
 		if req.UserId == id {
