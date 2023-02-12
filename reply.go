@@ -152,7 +152,7 @@ func (req QQMessage) ExecuteCommand() Message {
 	}
 	idStr := strconv.FormatInt(id, 10)
 
-	remainText := strings.Replace(req.RawMessage, "DabianBot ", "", -1)
+	remainText := strings.Replace(req.RawMessage, "NerdBot ", "", -1)
 	remainText = strings.Trim(remainText, " ")
 	for _, id := range globalConfig.AdminIds {
 		if req.UserId == id {
