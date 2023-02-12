@@ -184,7 +184,6 @@ func (req QQMessage) ExecuteCommand() Message {
 				msg.Data["text"] = "[通知]\n群" + strconv.FormatInt(req.GroupId, 10) + "的群聊模式已开启，之后所有群聊文字信息" +
 					"将以同一session供机器人进行分析。如需机器人进行回复，请在输入信息中@戴便机器人。\n注意: 此功能为实验性功能。另，群聊模式可能使用大量token，" +
 					"请注意您的token使用量。"
-
 			} else {
 				msg.Data["text"] = "[错误]\n群" + strconv.FormatInt(req.GroupId, 10) + "的群聊模式已开启，无须重复操作。"
 			}

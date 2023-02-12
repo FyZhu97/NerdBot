@@ -166,7 +166,7 @@ func initGlobalConfig() error {
 			ResponseMaxTokens:    500,
 			GroupChatMaxTokens:   2000,
 			PrivateChatMaxTokens: 4000,
-			DefaultTemperature:   0.5,
+			DefaultTemperature:   0.9,
 			InitialPrompts:       "",
 			MinInterval:          1,
 		},
