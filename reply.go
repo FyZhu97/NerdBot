@@ -159,6 +159,18 @@ func (req QQMessage) ExecuteCommand() Message {
 			isAdmin = true
 		}
 	}
+
+	if remainText == "clear" {
+		err := StoreRecord(idStr, &oriRec)
+		if err != nil {
+			msg.Data["text"] = fmt.Sprintf("[错误]ID: %d 的上下文清除失败。", id)
+		} else {
+			msg.Data["text"] = fmt.Sprintf("[通知]ID: %d 的上下文已被清除。", id)
+		}
+		return msg
+	}
+
+	//all the command below need Auth
 	if !isAdmin {
 		msg.Data["text"] = "[错误]\n对不起，您没有权限执行该命令"
 		return msg
@@ -186,16 +198,6 @@ func (req QQMessage) ExecuteCommand() Message {
 			}
 			return msg
 		}
-	}
-
-	if remainText == "clear" {
-		err := StoreRecord(idStr, &oriRec)
-		if err != nil {
-			msg.Data["text"] = fmt.Sprintf("[错误]ID: %d 的上下文清除失败。", id)
-		} else {
-			msg.Data["text"] = fmt.Sprintf("[通知]ID: %d 的上下文已被清除。", id)
-		}
-		return msg
 	}
 
 	if strings.HasPrefix(remainText, "set temperature") {
