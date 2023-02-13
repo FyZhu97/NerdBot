@@ -14,6 +14,18 @@ import (
 	"time"
 )
 
+var AIClient *http.Client
+
+type AITokenTransport struct {
+	Token string
+	Base  http.RoundTripper
+}
+
+func (t *AITokenTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req.Header.Add("Authorization", "Bearer "+t.Token)
+	return t.Base.RoundTrip(req)
+}
+
 type AIRequest struct {
 	Model       string  `json:"model"`
 	Prompt      string  `json:"prompt"`
@@ -48,10 +60,10 @@ type Record struct {
 
 func (data SendMsgData) AIChat(mode string) error {
 	req := AIRequest{
-		Model:       globalConfig.OpenAI.Model,
+		Model:       GlobalConfig.AI.Model,
 		Prompt:      "",
-		MaxTokens:   globalConfig.OpenAI.ResponseMaxTokens,
-		Temperature: globalConfig.OpenAI.DefaultTemperature,
+		MaxTokens:   GlobalConfig.AI.ResponseMaxTokens,
+		Temperature: GlobalConfig.AI.DefaultTemperature,
 	}
 	var id int64
 	if mode == "private" {
@@ -106,12 +118,12 @@ func (data SendMsgData) AddAIPrompts(mode string) error {
 			userName = memberInfo.Data.Nickname
 		}
 		id = data.GroupId
-		maxTokens = globalConfig.OpenAI.GroupChatMaxTokens
+		maxTokens = GlobalConfig.AI.GroupChatMaxTokens
 		groupPrompt = "AI在一个群聊内，作为一个群成员参与聊天。"
 	} else if mode == "private" {
 		userName = "用户"
 		id = data.UserId
-		maxTokens = globalConfig.OpenAI.PrivateChatMaxTokens
+		maxTokens = GlobalConfig.AI.PrivateChatMaxTokens
 	} else {
 		return errors.New("invalid mode")
 	}
@@ -120,10 +132,10 @@ func (data SendMsgData) AddAIPrompts(mode string) error {
 	if err != nil {
 		return fmt.Errorf("retrieve record error: %s", err)
 	}
-	if promptRecord.Prompt == globalConfig.OpenAI.InitialPrompts {
+	if promptRecord.Prompt == GlobalConfig.AI.InitialPrompts {
 		promptRecord.Prompt = groupPrompt + promptRecord.Prompt
 	}
-	if time.Now().Sub(promptRecord.LastRequest).Seconds() < globalConfig.OpenAI.MinInterval {
+	if time.Now().Sub(promptRecord.LastRequest).Seconds() < GlobalConfig.AI.MinInterval {
 		data.Message = append(data.Message, Message{
 			Type: "text",
 			Data: map[string]interface{}{
@@ -154,7 +166,7 @@ func (reqBody *AIRequest) DoAIRequest() (AIResponse, error) {
 	if err != nil {
 		return AIResponse{}, err
 	}
-	req, err := http.NewRequest("POST", globalConfig.OpenAI.ChatAIUrl, bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", GlobalConfig.AI.ChatAIUrl, bytes.NewBuffer(body))
 	if err != nil {
 		return AIResponse{}, err
 	}

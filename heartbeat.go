@@ -8,11 +8,11 @@ import (
 var countdown int
 
 func heartbeatStop() {
-	logrus.Fatalf("Heartbeat Stopped!!!")
+	logrus.Error("Heartbeat Stopped!!!")
 }
 
 func HeartbeatContinue() {
-	countdown = globalConfig.CqHttp.HeartbeatTimeOut
+	countdown = GlobalConfig.OneBot11.HeartbeatTimeOut
 }
 
 func HeartBeatMonitor() {

@@ -28,7 +28,7 @@ func SendGreetings() {
 		logrus.Error("[DailyGreetings]get group list fail: " + err.Error())
 	}
 	sender := SendMsgData{
-		Message:    []Message{globalConfig.Greeting.GreetingMessage},
+		Message:    []Message{GlobalConfig.Greeting.GreetingMessage},
 		AutoEscape: false,
 	}
 	for _, friendInfo := range friendInfos {

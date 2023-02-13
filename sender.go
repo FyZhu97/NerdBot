@@ -25,7 +25,7 @@ type Message struct {
 }
 
 func (data SendMsgData) Send() error {
-	replyUrl := globalConfig.CqHttp.ServerUrl + "send_msg"
+	replyUrl := GlobalConfig.OneBot11.ServerUrl + "send_msg"
 	bytesData, err := json.Marshal(data)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -35,7 +35,7 @@ func (data SendMsgData) Send() error {
 	req, err := http.NewRequest("POST", replyUrl, body)
 	defer req.Body.Close()
 	req.Header.Add("Content-Type", "application/json; charset=utf-8")
-	resp, err := QQClient.Do(req)
+	resp, err := OneBotClient.Do(req)
 	if err != nil {
 		return err
 	}

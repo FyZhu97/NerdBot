@@ -89,7 +89,7 @@ func reply(ctx *gin.Context) {
 	cqMessage, remainText, types := ParseCQCode(req.RawMessage)
 	req.CqTypes = types
 	remainText = strings.Trim(remainText, " ")
-	enableGroupChat, ok := globalConfig.OpenAI.EnableGroupChat[req.GroupId]
+	enableGroupChat, ok := GlobalConfig.AI.EnableGroupChat[req.GroupId]
 	var chatMode string
 	enableAIReply := true
 	if req.MessageType == "group" {
@@ -143,7 +143,7 @@ func (req QQMessage) ExecuteCommand() Message {
 		},
 	}
 
-	enableGroupChat, ok := globalConfig.OpenAI.EnableGroupChat[req.GroupId]
+	enableGroupChat, ok := GlobalConfig.AI.EnableGroupChat[req.GroupId]
 	var id int64
 	if req.MessageType == "group" && enableGroupChat {
 		id = req.GroupId
@@ -154,7 +154,7 @@ func (req QQMessage) ExecuteCommand() Message {
 
 	remainText := strings.Replace(req.RawMessage, "NerdBot ", "", -1)
 	remainText = strings.Trim(remainText, " ")
-	for _, id := range globalConfig.AdminIds {
+	for _, id := range GlobalConfig.Server.AdminIds {
 		if req.UserId == id {
 			isAdmin = true
 		}
@@ -176,7 +176,7 @@ func (req QQMessage) ExecuteCommand() Message {
 	} else if req.MessageType == "group" {
 		if remainText == "group mode" {
 			if !ok || !enableGroupChat {
-				globalConfig.OpenAI.EnableGroupChat[req.GroupId] = true
+				GlobalConfig.AI.EnableGroupChat[req.GroupId] = true
 				DeleteRecord(idStr)
 				msg.Data["text"] = "[通知]\n群" + strconv.FormatInt(req.GroupId, 10) + "的群聊模式已开启，之后所有群聊文字信息" +
 					"将以同一session供机器人进行分析。如需机器人进行回复，请在输入信息中@戴便机器人。\n注意: 此功能为实验性功能。另，群聊模式可能使用大量token，" +
@@ -187,7 +187,7 @@ func (req QQMessage) ExecuteCommand() Message {
 			return msg
 		} else if remainText == "private mode" {
 			if ok && enableGroupChat {
-				globalConfig.OpenAI.EnableGroupChat[req.GroupId] = false
+				GlobalConfig.AI.EnableGroupChat[req.GroupId] = false
 				DeleteRecord(idStr)
 				msg.Data["text"] = "[通知]\n群聊模式已关闭，机器人将恢复 1 vs 1 对话"
 			} else {
