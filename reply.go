@@ -94,7 +94,9 @@ func reply(ctx *gin.Context) {
 	enableAIReply := true
 	if req.MessageType == "group" {
 		if ok && enableGroupChat {
+			// if the bot is in group mode
 			chatMode = "group"
+			// do not reply if the bot is not mentioned
 			if !req.CqTypes.atSelf {
 				enableAIReply = false
 			}
@@ -143,10 +145,8 @@ func (req QQMessage) ExecuteCommand() Message {
 
 	enableGroupChat, ok := globalConfig.OpenAI.EnableGroupChat[req.GroupId]
 	var id int64
-	oriRec := OriRecord
 	if req.MessageType == "group" && enableGroupChat {
 		id = req.GroupId
-		oriRec.Prompt = oriRec.Prompt + "AI在一个群聊内，作为一个群成员参与聊天。"
 	} else {
 		id = req.UserId
 	}
@@ -161,12 +161,8 @@ func (req QQMessage) ExecuteCommand() Message {
 	}
 
 	if remainText == "clear" {
-		err := StoreRecord(idStr, &oriRec)
-		if err != nil {
-			msg.Data["text"] = fmt.Sprintf("[错误]ID: %d 的上下文清除失败。", id)
-		} else {
-			msg.Data["text"] = fmt.Sprintf("[通知]ID: %d 的上下文已被清除。", id)
-		}
+		DeleteRecord(idStr)
+		msg.Data["text"] = fmt.Sprintf("[通知]ID: %d 的上下文已被清除。", id)
 		return msg
 	}
 
@@ -181,6 +177,7 @@ func (req QQMessage) ExecuteCommand() Message {
 		if remainText == "group mode" {
 			if !ok || !enableGroupChat {
 				globalConfig.OpenAI.EnableGroupChat[req.GroupId] = true
+				DeleteRecord(idStr)
 				msg.Data["text"] = "[通知]\n群" + strconv.FormatInt(req.GroupId, 10) + "的群聊模式已开启，之后所有群聊文字信息" +
 					"将以同一session供机器人进行分析。如需机器人进行回复，请在输入信息中@戴便机器人。\n注意: 此功能为实验性功能。另，群聊模式可能使用大量token，" +
 					"请注意您的token使用量。"
@@ -191,6 +188,7 @@ func (req QQMessage) ExecuteCommand() Message {
 		} else if remainText == "private mode" {
 			if ok && enableGroupChat {
 				globalConfig.OpenAI.EnableGroupChat[req.GroupId] = false
+				DeleteRecord(idStr)
 				msg.Data["text"] = "[通知]\n群聊模式已关闭，机器人将恢复 1 vs 1 对话"
 			} else {
 				msg.Data["text"] = "[错误]群聊模式已经为关闭状态，无须操作"
@@ -206,21 +204,21 @@ func (req QQMessage) ExecuteCommand() Message {
 		if err != nil {
 			logrus.Error(err)
 		}
-		if err != nil || temp < 0 || temp > 1 {
+		if temp < 0 || temp > 1 {
 			msg.Data["text"] = "[错误]无效的temperature设置，值应该为0~1之间的小数"
+			logrus.Error("invalid temperature setting: ", temp)
 			return msg
 		}
-		record, ok, err := RetrieveRecord(idStr)
+		record, err := RetrieveOrDefaultRecord(idStr)
 		if err != nil {
 			msg.Data["text"] = fmt.Sprintf("[错误]temperature参数设置失败:获取记录失败")
+			logrus.Error(err)
 		} else {
-			if !ok {
-				record = &oriRec
-			}
 			record.Temperature = temp
 			err = StoreRecord(idStr, record)
 			if err != nil {
 				msg.Data["text"] = fmt.Sprintf("[错误]temperature参数设置失败：存储记录失败")
+				logrus.Error(err)
 			} else {
 				msg.Data["text"] = fmt.Sprintf("[通知]新的temperature参数已生效: %f", temp)
 			}
@@ -228,5 +226,6 @@ func (req QQMessage) ExecuteCommand() Message {
 		return msg
 	}
 	msg.Data["text"] = "[错误]未查询到相应指令"
+	logrus.Error("invalid command: ", req.RawMessage)
 	return msg
 }

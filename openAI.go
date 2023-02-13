@@ -46,30 +46,13 @@ type Record struct {
 	Temperature float64   `json:"temperature"`
 }
 
-var (
-	//ChatRecords map[int64]Record
-	oriReq    AIRequest
-	OriRecord Record
-)
-
-func initOpenAI() {
-	//ChatRecords = make(map[int64]Record)
-	oriReq = AIRequest{
+func (data SendMsgData) AIChat(mode string) error {
+	req := AIRequest{
 		Model:       globalConfig.OpenAI.Model,
 		Prompt:      "",
 		MaxTokens:   globalConfig.OpenAI.ResponseMaxTokens,
 		Temperature: globalConfig.OpenAI.DefaultTemperature,
 	}
-	OriRecord = Record{
-		Prompt:      globalConfig.OpenAI.InitialPrompts,
-		TotalTokens: 0,
-		LastRequest: time.Now(),
-		Temperature: globalConfig.OpenAI.DefaultTemperature,
-	}
-}
-
-func (data SendMsgData) AIChat(mode string) error {
-	req := oriReq
 	var id int64
 	if mode == "private" {
 		id = data.UserId
@@ -77,11 +60,10 @@ func (data SendMsgData) AIChat(mode string) error {
 		id = data.GroupId
 	}
 	idStr := strconv.FormatInt(id, 10)
-	promptRecord, ok, err := RetrieveRecord(idStr)
-	if err != nil || !ok {
-		return fmt.Errorf("error occured or empty record: %s", err)
+	promptRecord, err := RetrieveOrDefaultRecord(idStr)
+	if err != nil {
+		return fmt.Errorf("retrieve record error: %s", err)
 	}
-	//promptRecord := ChatRecords[id]
 	req.Temperature = promptRecord.Temperature
 	promptRecord.Prompt = promptRecord.Prompt + "\n戴便机器人:"
 	req.Prompt = promptRecord.Prompt
@@ -112,7 +94,7 @@ func (data SendMsgData) AddAIPrompts(mode string) error {
 	var userName string
 	var id int64
 	var maxTokens int
-	oriRecord := OriRecord
+	var groupPrompt = ""
 	if mode == "group" {
 		memberInfo, err := GetGroupMemberInfo(data.UserId, data.GroupId)
 		if err != nil {
@@ -125,7 +107,7 @@ func (data SendMsgData) AddAIPrompts(mode string) error {
 		}
 		id = data.GroupId
 		maxTokens = globalConfig.OpenAI.GroupChatMaxTokens
-		oriRecord.Prompt = oriRecord.Prompt + "AI在一个群聊内，作为一个群成员参与聊天。"
+		groupPrompt = "AI在一个群聊内，作为一个群成员参与聊天。"
 	} else if mode == "private" {
 		userName = "用户"
 		id = data.UserId
@@ -134,18 +116,18 @@ func (data SendMsgData) AddAIPrompts(mode string) error {
 		return errors.New("invalid mode")
 	}
 	idStr := strconv.FormatInt(id, 10)
-	promptRecord, ok, err := RetrieveRecord(idStr)
+	promptRecord, err := RetrieveOrDefaultRecord(idStr)
 	if err != nil {
-		return err
+		return fmt.Errorf("retrieve record error: %s", err)
 	}
-	if !ok {
-		promptRecord = &oriRecord
+	if promptRecord.Prompt == globalConfig.OpenAI.InitialPrompts {
+		promptRecord.Prompt = groupPrompt + promptRecord.Prompt
 	}
 	if time.Now().Sub(promptRecord.LastRequest).Seconds() < globalConfig.OpenAI.MinInterval {
 		data.Message = append(data.Message, Message{
 			Type: "text",
 			Data: map[string]interface{}{
-				"text": "别急，让我的💩仔细想想[发送频率过快]",
+				"text": "别急，让我仔细想想[发送频率过快]",
 			},
 		})
 		err := data.Send()
@@ -155,13 +137,10 @@ func (data SendMsgData) AddAIPrompts(mode string) error {
 		data.Message = append(data.Message, Message{
 			Type: "text",
 			Data: map[string]interface{}{
-				"text": "这个话题聊得太深入了💩（ZFY钱包要撑不住了），我们换个话题吧[上下文已清空]",
+				"text": "这个话题聊得太深入了，我们换个话题吧[上下文已清空]",
 			},
 		})
-		err = StoreRecord(idStr, &oriRecord)
-		if err != nil {
-			return err
-		}
+		DeleteRecord(idStr)
 		err = data.Send()
 		return err
 	}

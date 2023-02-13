@@ -102,7 +102,6 @@ func main() {
 			logrus.Fatalf("goredis - failed to communicate to redis-server: %v", err)
 		}
 	}()
-	initOpenAI()
 	gin.SetMode(gin.ReleaseMode)
 	gin.DefaultWriter = io.Discard
 	r := gin.Default()

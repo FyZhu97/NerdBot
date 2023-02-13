@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"github.com/go-redis/redis/v8"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
@@ -242,28 +243,29 @@ func StoreRecord(key string, record *Record) error {
 	return nil
 }
 
-func RetrieveRecord(key string) (*Record, bool, error) {
-	exists, err := Connection.Exists(context.Background(), key).Result()
-	if err != nil {
-		return nil, false, err
-	}
-
-	if exists == 0 {
-		// The key does not exist
-		return nil, false, nil
-	}
+func RetrieveOrDefaultRecord(key string) (*Record, error) {
 	// Get the stored JSON from Redis
 	recordJSON, err := Connection.Get(context.Background(), key).Bytes()
-	if err != nil {
-		return nil, false, err
+	if err == redis.Nil {
+		ori := Record{
+			Prompt:      globalConfig.OpenAI.InitialPrompts,
+			TotalTokens: 0,
+			LastRequest: time.UnixMicro(0),
+			Temperature: globalConfig.OpenAI.DefaultTemperature,
+		}
+		return &ori, nil
+	} else if err != nil {
+		return nil, err
 	}
-
 	// Convert the JSON to a Record struct
 	var record Record
 	err = json.Unmarshal(recordJSON, &record)
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 
-	return &record, true, err
+	return &record, err
+}
+func DeleteRecord(key string) {
+	Connection.Del(context.Background(), key)
 }
