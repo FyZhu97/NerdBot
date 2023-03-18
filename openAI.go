@@ -9,7 +9,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -26,11 +25,15 @@ func (t *AITokenTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	return t.Base.RoundTrip(req)
 }
 
+type ChatMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
 type AIRequest struct {
-	Model       string  `json:"model"`
-	Prompt      string  `json:"prompt"`
-	MaxTokens   int     `json:"max_tokens"`
-	Temperature float64 `json:"temperature"`
+	Model       string        `json:"model"`
+	Messages    []ChatMessage `json:"messages"`
+	Temperature float64       `json:"temperature"`
 }
 
 type AIResponse struct {
@@ -39,9 +42,8 @@ type AIResponse struct {
 	Created int    `json:"created"`
 	Model   string `json:"model"`
 	Choices []struct {
-		Text         string      `json:"text"`
+		Message      ChatMessage `json:"message"`
 		Index        int         `json:"index"`
-		LogProbs     interface{} `json:"logprobs"`
 		FinishReason string      `json:"finish_reason"`
 	} `json:"choices"`
 	Usage struct {
@@ -52,39 +54,34 @@ type AIResponse struct {
 }
 
 type Record struct {
-	Prompt      string    `json:"prompt"`
-	TotalTokens int       `json:"totalTokens"`
-	LastRequest time.Time `json:"lastRequest"`
-	Temperature float64   `json:"temperature"`
+	Messages    []ChatMessage `json:"messages"`
+	TotalTokens int           `json:"totalTokens"`
+	LastRequest time.Time     `json:"lastRequest"`
+	Temperature float64       `json:"temperature"`
 }
 
-func (data SendMsgData) AIChat(mode string) error {
-	req := AIRequest{
-		Model:       GlobalConfig.AI.Model,
-		Prompt:      "",
-		MaxTokens:   GlobalConfig.AI.ResponseMaxTokens,
-		Temperature: GlobalConfig.AI.DefaultTemperature,
-	}
-	var id int64
+func (data *SendMsgData) AIChat(mode string) error {
+	var id string
 	if mode == "private" {
 		id = data.UserId
 	} else if mode == "group" {
 		id = data.GroupId
 	}
-	idStr := strconv.FormatInt(id, 10)
-	promptRecord, err := RetrieveOrDefaultRecord(idStr)
+	record, err := RetrieveOrDefaultRecord(id)
 	if err != nil {
 		return fmt.Errorf("retrieve record error: %s", err)
 	}
-	req.Temperature = promptRecord.Temperature
-	promptRecord.Prompt = promptRecord.Prompt + "\n戴便机器人:"
-	req.Prompt = promptRecord.Prompt
+	req := AIRequest{
+		Model:       GlobalConfig.AI.Model,
+		Messages:    record.Messages,
+		Temperature: record.Temperature,
+	}
+	logrus.Debug(req)
 	AIResp, err := req.GetAIResponseWithRetries(3)
 	if err != nil {
 		return err
 	}
-	respText := AIResp.Choices[0].Text
-	respText = strings.Replace(respText, "戴便机器人:", "", -1)
+	respText := AIResp.Choices[0].Message.Content
 	data.Message = append(data.Message, Message{
 		Type: "text",
 		Data: map[string]interface{}{
@@ -95,16 +92,16 @@ func (data SendMsgData) AIChat(mode string) error {
 	if err != nil {
 		return err
 	}
-	promptRecord.Prompt = promptRecord.Prompt + respText
-	promptRecord.TotalTokens += AIResp.Usage.TotalTokens
-	promptRecord.LastRequest = time.Now()
-	err = StoreRecord(idStr, promptRecord)
+	record.Messages = append(record.Messages, AIResp.Choices[0].Message)
+	record.TotalTokens += AIResp.Usage.TotalTokens
+	record.LastRequest = time.Now()
+	err = StoreRecord(id, record)
 	return err
 }
 
-func (data SendMsgData) AddAIPrompts(mode string) error {
+func (data *SendMsgData) AddAIPrompts(mode string) error {
 	var userName string
-	var id int64
+	var id string
 	var maxTokens int
 	var groupPrompt = ""
 	if mode == "group" {
@@ -121,21 +118,20 @@ func (data SendMsgData) AddAIPrompts(mode string) error {
 		maxTokens = GlobalConfig.AI.GroupChatMaxTokens
 		groupPrompt = "AI在一个群聊内，作为一个群成员参与聊天。"
 	} else if mode == "private" {
-		userName = "用户"
+		userName = "user"
 		id = data.UserId
 		maxTokens = GlobalConfig.AI.PrivateChatMaxTokens
 	} else {
 		return errors.New("invalid mode")
 	}
-	idStr := strconv.FormatInt(id, 10)
-	promptRecord, err := RetrieveOrDefaultRecord(idStr)
+	record, err := RetrieveOrDefaultRecord(id)
 	if err != nil {
 		return fmt.Errorf("retrieve record error: %s", err)
 	}
-	if promptRecord.Prompt == GlobalConfig.AI.InitialPrompts {
-		promptRecord.Prompt = groupPrompt + promptRecord.Prompt
+	if len(record.Messages) == 1 && groupPrompt != "" {
+		record.Messages[0].Content += groupPrompt
 	}
-	if time.Now().Sub(promptRecord.LastRequest).Seconds() < GlobalConfig.AI.MinInterval {
+	if time.Now().Sub(record.LastRequest).Seconds() < GlobalConfig.AI.MinInterval {
 		data.Message = append(data.Message, Message{
 			Type: "text",
 			Data: map[string]interface{}{
@@ -145,19 +141,23 @@ func (data SendMsgData) AddAIPrompts(mode string) error {
 		err := data.Send()
 		return err
 	}
-	if promptRecord.TotalTokens > maxTokens {
+	if record.TotalTokens > maxTokens {
 		data.Message = append(data.Message, Message{
 			Type: "text",
 			Data: map[string]interface{}{
 				"text": "这个话题聊得太深入了，我们换个话题吧[上下文已清空]",
 			},
 		})
-		DeleteRecord(idStr)
+		DeleteRecord(id)
 		err = data.Send()
 		return err
 	}
-	promptRecord.Prompt = promptRecord.Prompt + "\n" + userName + ":" + data.ReceivedMsg
-	err = StoreRecord(idStr, promptRecord)
+	record.Messages = append(record.Messages, ChatMessage{
+		Role:    userName,
+		Content: data.ReceivedMsg,
+	})
+	err = StoreRecord(id, record)
+	logrus.Debug(record)
 	return err
 }
 

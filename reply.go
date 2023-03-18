@@ -71,8 +71,8 @@ func reply(ctx *gin.Context) {
 	logrus.Info("Received message: ", req.Message)
 	sender := SendMsgData{
 		MessageType: req.MessageType,
-		UserId:      req.UserId,
-		GroupId:     req.GroupId,
+		UserId:      strconv.FormatInt(req.UserId, 10),
+		GroupId:     strconv.FormatInt(req.GroupId, 10),
 		Message:     make([]Message, 0, 5),
 		AutoEscape:  false,
 		ReceivedMsg: req.RawMessage,

@@ -43,7 +43,12 @@ func RetrieveOrDefaultRecord(key string) (*Record, error) {
 	recordJSON, err := Connection.Get(context.Background(), key).Bytes()
 	if err == redis.Nil {
 		ori := Record{
-			Prompt:      GlobalConfig.AI.InitialPrompts,
+			Messages: []ChatMessage{
+				{
+					Role:    "system",
+					Content: GlobalConfig.AI.InitialPrompts,
+				},
+			},
 			TotalTokens: 0,
 			LastRequest: time.UnixMicro(0),
 			Temperature: GlobalConfig.AI.DefaultTemperature,

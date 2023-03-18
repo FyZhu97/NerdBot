@@ -133,12 +133,12 @@ func GetLoginInfo() (LoginInfo, error) {
 	return respData, err
 }
 
-func GetGroupMemberInfo(userId int64, groupId int64) (GroupMemberInfo, error) {
+func GetGroupMemberInfo(userId string, groupId string) (GroupMemberInfo, error) {
 	requestUrl := GlobalConfig.OneBot11.ServerUrl + "get_group_member_info"
 	req, err := http.NewRequest("GET", requestUrl, nil)
 	q := req.URL.Query()
-	q.Add("group_id", strconv.FormatInt(groupId, 10))
-	q.Add("user_id", strconv.FormatInt(userId, 10))
+	q.Add("group_id", groupId)
+	q.Add("user_id", userId)
 	req.URL.RawQuery = q.Encode()
 	if err != nil {
 		return GroupMemberInfo{}, err

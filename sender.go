@@ -12,8 +12,8 @@ import (
 
 type SendMsgData struct {
 	MessageType string    `json:"message_type"`
-	UserId      int64     `json:"user_id"`
-	GroupId     int64     `json:"group_id"`
+	UserId      string    `json:"user_id"`
+	GroupId     string    `json:"group_id"`
 	Message     []Message `json:"message"`
 	AutoEscape  bool      `json:"auto_escape"`
 	ReceivedMsg string    `json:"-"`
@@ -24,7 +24,17 @@ type Message struct {
 	Data map[string]interface{} `json:"data" yaml:"data"`
 }
 
-func (data SendMsgData) Send() error {
+func (data *SendMsgData) Send() error {
+	var err error
+	if GlobalConfig.ServeMode == "onebot" {
+		err = data.sendToOnebot()
+	} else {
+		err = data.sendToOpenWechat()
+	}
+	return err
+}
+
+func (data *SendMsgData) sendToOnebot() error {
 	replyUrl := GlobalConfig.OneBot11.ServerUrl + "send_msg"
 	bytesData, err := json.Marshal(data)
 	if err != nil {
@@ -40,8 +50,12 @@ func (data SendMsgData) Send() error {
 		return err
 	}
 	if resp.StatusCode != 200 {
-		return errors.New("[Sender] reply to " + data.MessageType + " " + strconv.FormatInt(data.UserId, 10) + " error: " + strconv.FormatInt(int64(resp.StatusCode), 10))
+		return errors.New("[Sender] reply to " + data.MessageType + " " + data.UserId + " error: " + strconv.FormatInt(int64(resp.StatusCode), 10))
 	}
 	logrus.Info("[Sender]Send message success: ", data.Message)
+	return nil
+}
+
+func (data *SendMsgData) sendToOpenWechat() error {
 	return nil
 }

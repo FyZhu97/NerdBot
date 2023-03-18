@@ -42,18 +42,36 @@ type ServerConfig struct {
 	AdminIds []int64 `yaml:"adminIds" comment:"管理员帐号ID"`
 }
 
+type OpenWechatConfig struct {
+	AppID          string `yaml:"app_id"`
+	AppSecret      string `yaml:"app_secret"`
+	Token          string `yaml:"token"`
+	EncodingAESKey string `yaml:"encoding_aes_key"`
+}
+
 type Config struct {
-	Server   ServerConfig   `yaml:"server"`
-	OneBot11 OneBot11Config `yaml:"oneBot11"`
-	AI       OpenAIConfig   `yaml:"openAI"`
-	Redis    RedisConfig    `yaml:"redis"`
-	Greeting GreetingConfig `yaml:"greeting"`
+	Server     ServerConfig     `yaml:"server"`
+	OneBot11   OneBot11Config   `yaml:"oneBot11"`
+	AI         OpenAIConfig     `yaml:"openAI"`
+	Redis      RedisConfig      `yaml:"redis"`
+	Greeting   GreetingConfig   `yaml:"greeting"`
+	OpenWechat OpenWechatConfig `yaml:"open_wechat"`
+	ServeMode  string           `yaml:"serve_mode"`
+	Debug      bool             `yaml:"debug"`
 }
 
 var GlobalConfig *Config
 
 func InitGlobalConfig() error {
 	GlobalConfig = &Config{
+		Debug:     false,
+		ServeMode: "",
+		OpenWechat: OpenWechatConfig{
+			AppID:          "",
+			AppSecret:      "",
+			Token:          "",
+			EncodingAESKey: "",
+		},
 		Server: ServerConfig{
 			Address:  "0.0.0.0:5701",
 			AdminIds: []int64{123456},
@@ -66,9 +84,9 @@ func InitGlobalConfig() error {
 		AI: OpenAIConfig{
 			ChatAIUrl:            "https://api.openai.com/v1/completions",
 			APIKey:               "YOUR_API_KEY",
-			Model:                "text-davinci-003",
-			ResponseMaxTokens:    500,
-			GroupChatMaxTokens:   2000,
+			Model:                "gpt-3.5-turbo",
+			ResponseMaxTokens:    4000,
+			GroupChatMaxTokens:   4000,
 			PrivateChatMaxTokens: 4000,
 			DefaultTemperature:   0.9,
 			InitialPrompts:       "",

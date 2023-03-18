@@ -16,13 +16,10 @@ func main() {
 		return
 	}
 	logrus.Info("initiate global config success")
-	initHTTPClients()
-	loginInfo, err := GetLoginInfo()
-	if err != nil {
-		logrus.Error("initiate login info fail. Please check whether cqhttp is running. Error: ", err)
-		return
+	if GlobalConfig.Debug == true {
+		logrus.SetLevel(logrus.DebugLevel)
 	}
-	GlobalConfig.OneBot11.SelfId = loginInfo.Data.UserId
+	initHTTPClients()
 	InitRedis()
 	defer func() {
 		if err := Connection.FlushAll(context.Background()).Err(); err != nil {
@@ -32,6 +29,31 @@ func main() {
 			logrus.Fatalf("goredis - failed to communicate to redis-server: %v", err)
 		}
 	}()
+	go DailyPromptsClear()
+	if GlobalConfig.ServeMode == "onebot" {
+		oneBotServe()
+	} else {
+		openWechatServe()
+	}
+}
+
+func openWechatServe() {
+	http.Handle("/", OpenWechatHandler{})
+	logrus.Info("listening to: ", GlobalConfig.Server.Address)
+	err := http.ListenAndServe(GlobalConfig.Server.Address, nil)
+	if err != nil {
+		logrus.Error("listening port error:", err)
+		return
+	}
+}
+
+func oneBotServe() {
+	loginInfo, err := GetLoginInfo()
+	if err != nil {
+		logrus.Error("initiate login info fail. Please check whether cqhttp is running. Error: ", err)
+		return
+	}
+	GlobalConfig.OneBot11.SelfId = loginInfo.Data.UserId
 	gin.SetMode(gin.ReleaseMode)
 	gin.DefaultWriter = io.Discard
 	r := gin.Default()
@@ -43,7 +65,6 @@ func main() {
 	if GlobalConfig.Greeting.EnableGreeting {
 		go DailyGreetings()
 	}
-	go DailyPromptsClear()
 	logrus.Info("listening to: ", GlobalConfig.Server.Address)
 	err = r.Run(GlobalConfig.Server.Address)
 	if err != nil {

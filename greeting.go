@@ -33,18 +33,18 @@ func SendGreetings() {
 	}
 	for _, friendInfo := range friendInfos {
 		sender.MessageType = "private"
-		sender.UserId = friendInfo.UserId
+		sender.UserId = strconv.FormatInt(friendInfo.UserId, 10)
 		err := sender.Send()
 		if err != nil {
-			logrus.Error("[DailyGreetings]send greeting to friend " + strconv.FormatInt(sender.UserId, 10) + " fail: " + err.Error())
+			logrus.Error("[DailyGreetings]send greeting to friend " + sender.UserId + " fail: " + err.Error())
 		}
 	}
 	for _, groupInfo := range groupInfos {
 		sender.MessageType = "group"
-		sender.GroupId = groupInfo.GroupId
+		sender.GroupId = strconv.FormatInt(groupInfo.GroupId, 10)
 		err := sender.Send()
 		if err != nil {
-			logrus.Error("[DailyGreetings]send greeting to group " + strconv.FormatInt(sender.UserId, 10) + " fail: " + err.Error())
+			logrus.Error("[DailyGreetings]send greeting to group " + sender.UserId + " fail: " + err.Error())
 		}
 	}
 }
